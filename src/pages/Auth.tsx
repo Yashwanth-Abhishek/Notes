@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { BookOpen, FileText, Search, Archive } from 'lucide-react';
+import GlitchText from '@/components/GlitchText';
 
 export default function Auth() {
   const { user, signInWithGoogle, loading } = useAuth();
@@ -26,8 +27,20 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('/library-background.jpg.jpg')`
+        }}
+      />
+      
+      {/* Overlay for better readability */}
+      <div className="absolute inset-0 bg-background/40 backdrop-blur-sm" />
+      
+      {/* Content */}
+      <div className="relative z-10 w-full max-w-md space-y-8">
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-6">
@@ -38,7 +51,14 @@ export default function Auth() {
               </div>
             </div>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Notes</h1>
+          <GlitchText
+            speed={1}
+            enableShadows={true}
+            enableOnHover={true}
+            className="text-4xl font-bold tracking-tight"
+          >
+            Notes
+          </GlitchText>
           <p className="text-xl text-muted-foreground">
             Your digital notebook for organized thoughts
           </p>

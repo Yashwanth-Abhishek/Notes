@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, ArrowLeft, CheckSquare, Square, Archive, Trash2 } from 'lucide-react';
+import { Plus, Search, MoreVertical, ArrowLeft, CheckSquare, Square, Archive, Trash2, BookOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import GlitchText from '@/components/GlitchText';
 
 interface Note {
   id: string;
@@ -279,6 +280,23 @@ export default function NotebookDetail() {
               <Button variant="ghost" size="sm" onClick={() => navigate('/notebooks')}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                    <FileText className="w-1.5 h-1.5 text-primary-foreground" />
+                  </div>
+                </div>
+                <GlitchText
+                  speed={1}
+                  enableShadows={true}
+                  enableOnHover={true}
+                  className="text-lg font-bold"
+                >
+                  Notes
+                </GlitchText>
+              </div>
+              <div className="text-muted-foreground">/</div>
               <h1 className="text-2xl font-bold">{notebook?.title}</h1>
             </div>
             

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, MoreVertical, LogOut, User } from 'lucide-react';
+import { Plus, Search, MoreVertical, LogOut, User, BookOpen, FileText, Archive, Trash2, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import GlitchText from '@/components/GlitchText';
 
 interface Notebook {
   id: string;
@@ -18,6 +19,9 @@ interface Notebook {
   created_at: string;
   updated_at: string;
   sort_order: number;
+  is_archived?: boolean;
+  is_deleted?: boolean;
+  deleted_at?: string;
 }
 
 export default function Notebooks() {
@@ -32,6 +36,10 @@ export default function Notebooks() {
   const [newNotebookTitle, setNewNotebookTitle] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [notebookToRename, setNotebookToRename] = useState<Notebook | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -46,12 +54,15 @@ export default function Notebooks() {
       const { data, error } = await supabase
         .from('notebooks')
         .select('*')
+        .eq('is_archived', false)
+        .eq('is_deleted', false)
         .order('sort_order', { ascending: true })
         .order('title', { ascending: true });
 
       if (error) throw error;
       setNotebooks(data || []);
     } catch (error) {
+      console.error('Error fetching notebooks:', error);
       toast({
         title: "Error fetching notebooks",
         description: "Please try again",
@@ -101,7 +112,7 @@ export default function Notebooks() {
     try {
       const { error } = await supabase
         .from('notebooks')
-        .delete()
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
         .eq('id', notebookToDelete.id);
 
       if (error) throw error;
@@ -111,12 +122,71 @@ export default function Notebooks() {
       setNotebookToDelete(null);
       
       toast({
-        title: "Notebook deleted",
-        description: `"${notebookToDelete.title}" and all its notes have been deleted`,
+        title: "Notebook moved to trash",
+        description: `"${notebookToDelete.title}" has been moved to trash`,
+      });
+    } catch (error) {
+      console.error('Error moving notebook to trash:', error);
+      toast({
+        title: "Error moving notebook to trash",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renameNotebook = async () => {
+    if (!notebookToRename || !newTitle.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('notebooks')
+        .update({ title: newTitle.trim() })
+        .eq('id', notebookToRename.id);
+
+      if (error) throw error;
+
+      setNotebooks(notebooks.map(n => 
+        n.id === notebookToRename.id 
+          ? { ...n, title: newTitle.trim() }
+          : n
+      ));
+      setRenameDialogOpen(false);
+      setNotebookToRename(null);
+      setNewTitle('');
+      
+      toast({
+        title: "Notebook renamed",
+        description: `"${notebookToRename.title}" has been renamed to "${newTitle.trim()}"`,
       });
     } catch (error) {
       toast({
-        title: "Error deleting notebook",
+        title: "Error renaming notebook",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const archiveNotebook = async (notebook: Notebook) => {
+    try {
+      const { error } = await supabase
+        .from('notebooks')
+        .update({ is_archived: true })
+        .eq('id', notebook.id);
+
+      if (error) throw error;
+
+      setNotebooks(notebooks.filter(n => n.id !== notebook.id));
+      
+      toast({
+        title: "Notebook archived",
+        description: `"${notebook.title}" has been moved to archive`,
+      });
+    } catch (error) {
+      console.error('Error archiving notebook:', error);
+      toast({
+        title: "Error archiving notebook",
         description: "Please try again",
         variant: "destructive",
       });
@@ -142,53 +212,153 @@ export default function Notebooks() {
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <BookOpen className="w-8 h-8 text-primary" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                  <FileText className="w-2 h-2 text-primary-foreground" />
+                </div>
+              </div>
+              <GlitchText
+                speed={1}
+                enableShadows={true}
+                enableOnHover={true}
+                className="text-2xl font-bold"
+              >
+                Notes
+              </GlitchText>
+            </div>
+            <div className="text-muted-foreground">/</div>
             <h1 className="text-2xl font-bold">My Notebooks</h1>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => setCreateDialogOpen(true)}
-              size="sm"
-              className="hidden sm:flex"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Notebook
-            </Button>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name} />
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user?.user_metadata?.full_name}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">
-                      {user?.email}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                     <div className="flex items-center space-x-4">
+             <Button
+               variant="ghost"
+               size="sm"
+               onClick={() => setSidebarOpen(!sidebarOpen)}
+             >
+               {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+             </Button>
+             <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                 <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full">
+                   <Avatar className="h-8 w-8">
+                     <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name} />
+                     <AvatarFallback>
+                       <User className="h-4 w-4" />
+                     </AvatarFallback>
+                   </Avatar>
+                 </Button>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent className="w-56" align="end" forceMount>
+                 <div className="flex items-center justify-start gap-2 p-2">
+                   <div className="flex flex-col space-y-1 leading-none">
+                     <p className="font-medium">{user?.user_metadata?.full_name}</p>
+                     <p className="w-[200px] truncate text-sm text-muted-foreground">
+                       {user?.email}
+                     </p>
+                   </div>
+                 </div>
+                 <DropdownMenuSeparator />
+                 <DropdownMenuItem onClick={signOut}>
+                   <LogOut className="mr-2 h-4 w-4" />
+                   Sign out
+                 </DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu>
+           </div>
         </div>
-      </header>
+             </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+               {/* Sidebar */}
+        <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+         <div className="flex flex-col h-full">
+           {/* Sidebar Header */}
+           <div className="flex items-center justify-between p-4 border-b border-border">
+             <h2 className="text-lg font-semibold">Navigation</h2>
+             <Button
+               variant="ghost"
+               size="sm"
+               onClick={() => setSidebarOpen(false)}
+               className="lg:hidden"
+             >
+               <X className="h-4 w-4" />
+             </Button>
+           </div>
+           
+           {/* Sidebar Navigation */}
+           <nav className="flex-1 p-4 space-y-2">
+             <Button
+               variant="ghost"
+               className="w-full justify-start"
+               onClick={() => {
+                 setSidebarOpen(false);
+                 // Navigate to main notebooks view
+               }}
+             >
+               <BookOpen className="h-4 w-4 mr-3" />
+               My Notebooks
+             </Button>
+                            <Button
+                 variant="ghost"
+                 className="w-full justify-start"
+                 onClick={() => {
+                   setSidebarOpen(false);
+                   navigate('/archive');
+                 }}
+               >
+                 <Archive className="h-4 w-4 mr-3" />
+                 Archive
+               </Button>
+                            <Button
+                 variant="ghost"
+                 className="w-full justify-start"
+                 onClick={() => {
+                   setSidebarOpen(false);
+                   navigate('/deleted');
+                 }}
+               >
+                 <Trash2 className="h-4 w-4 mr-3" />
+                 Deleted
+               </Button>
+           </nav>
+           
+           {/* Sidebar Footer */}
+           <div className="p-4 border-t border-border">
+             <div className="flex items-center space-x-3">
+               <Avatar className="h-8 w-8">
+                 <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.user_metadata?.full_name} />
+                 <AvatarFallback>
+                   <User className="h-4 w-4" />
+                 </AvatarFallback>
+               </Avatar>
+               <div className="flex-1 min-w-0">
+                 <p className="text-sm font-medium truncate">{user?.user_metadata?.full_name}</p>
+                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+               </div>
+               <Button variant="ghost" size="sm" onClick={signOut}>
+                 <LogOut className="h-4 w-4" />
+               </Button>
+             </div>
+           </div>
+         </div>
+       </div>
+
+       {/* Overlay for mobile */}
+       {sidebarOpen && (
+         <div
+           className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+           onClick={() => setSidebarOpen(false)}
+         />
+       )}
+
+                      {/* Main Content */}
+        <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : ''}`}>
+         <div className="container mx-auto px-4 py-8">
         {/* Search and Actions */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
@@ -203,9 +373,9 @@ export default function Notebooks() {
           
           <Button
             onClick={() => setCreateDialogOpen(true)}
-            className="sm:hidden"
+            className="flex items-center gap-2"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             New Notebook
           </Button>
         </div>
@@ -255,18 +425,39 @@ export default function Notebooks() {
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setNotebookToDelete(notebook);
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="text-destructive"
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
+                                         <DropdownMenuContent align="end">
+                       <DropdownMenuItem
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setNotebookToRename(notebook);
+                           setNewTitle(notebook.title);
+                           setRenameDialogOpen(true);
+                         }}
+                       >
+                         <FileText className="h-4 w-4 mr-2" />
+                         Rename
+                       </DropdownMenuItem>
+                       <DropdownMenuItem
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           archiveNotebook(notebook);
+                         }}
+                       >
+                         <Archive className="h-4 w-4 mr-2" />
+                         Archive
+                       </DropdownMenuItem>
+                       <DropdownMenuItem
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setNotebookToDelete(notebook);
+                           setDeleteDialogOpen(true);
+                         }}
+                         className="text-destructive"
+                       >
+                         <Trash2 className="h-4 w-4 mr-2" />
+                         Move to Trash
+                       </DropdownMenuItem>
+                     </DropdownMenuContent>
                   </DropdownMenu>
                 </CardHeader>
                 <CardContent>
@@ -277,8 +468,9 @@ export default function Notebooks() {
               </Card>
             ))}
           </div>
-        )}
-      </main>
+                 )}
+         </div>
+       </main>
 
       {/* Create Notebook Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
@@ -316,17 +508,49 @@ export default function Notebooks() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Notebook</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{notebookToDelete?.title}"? This will also delete all notes in this notebook. This action cannot be undone.
-            </DialogDescription>
+                         <DialogTitle>Move to Trash</DialogTitle>
+                         <DialogDescription>
+               Are you sure you want to move "{notebookToDelete?.title}" to trash? This will also move all notes in this notebook to trash. You can restore them later.
+             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={deleteNotebook}>
-              Delete Notebook
+                         <Button variant="destructive" onClick={deleteNotebook}>
+               Move to Trash
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Notebook Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Notebook</DialogTitle>
+            <DialogDescription>
+              Enter a new name for your notebook.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-title">Notebook Title</Label>
+              <Input
+                id="rename-title"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Enter new notebook title..."
+                onKeyDown={(e) => e.key === 'Enter' && renameNotebook()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={renameNotebook} disabled={!newTitle.trim()}>
+              Rename Notebook
             </Button>
           </DialogFooter>
         </DialogContent>

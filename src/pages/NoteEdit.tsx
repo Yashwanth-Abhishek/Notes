@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, BookOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import GlitchText from '@/components/GlitchText';
 
 interface Note {
   id: string;
@@ -164,6 +165,23 @@ export default function NoteEdit() {
               <Button variant="ghost" size="sm" onClick={handleBack}>
                 <ArrowLeft className="w-4 h-4" />
               </Button>
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <BookOpen className="w-6 h-6 text-primary" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                    <FileText className="w-1.5 h-1.5 text-primary-foreground" />
+                  </div>
+                </div>
+                <GlitchText
+                  speed={1}
+                  enableShadows={true}
+                  enableOnHover={true}
+                  className="text-lg font-bold"
+                >
+                  Notes
+                </GlitchText>
+              </div>
+              <div className="text-muted-foreground">/</div>
               <div>
                 <h1 className="text-lg font-medium">
                   {notebook?.title}

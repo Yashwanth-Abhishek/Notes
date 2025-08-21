@@ -4,24 +4,26 @@ import { Plus, Search, MoreVertical, LogOut, User, BookOpen, FileText, Archive, 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import GlitchText from '@/components/GlitchText';
 
-interface Notebook {
+type Notebook = {
   id: string;
   title: string;
   created_at: string;
   updated_at: string;
-  sort_order: number;
-  is_archived?: boolean;
-  is_deleted?: boolean;
-  deleted_at?: string;
+  sort_order: number | null;
+  user_id: string;
+  is_archived: boolean;
+  is_deleted: boolean;
+  deleted_at: string | null;
 }
 
 export default function ArchivePage() {
@@ -51,6 +53,9 @@ export default function ArchivePage() {
   const fetchArchivedNotebooks = async () => {
     console.log('fetchArchivedNotebooks called');
     try {
+      setLoading(true); // Ensure loading is set to true when fetching
+      console.log('Fetching archived notebooks from Supabase...');
+      
       const { data, error } = await supabase
         .from('notebooks')
         .select('*')
@@ -58,14 +63,22 @@ export default function ArchivePage() {
         .eq('is_deleted', false)
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
       console.log('Archived notebooks fetched:', data);
       setNotebooks(data || []);
+      
+      if (!data || data.length === 0) {
+        console.log('No archived notebooks found');
+      }
     } catch (error) {
       console.error('Error fetching archived notebooks:', error);
       toast({
         title: "Error fetching archived notebooks",
-        description: "Please try again",
+        description: "Please try refreshing the page",
         variant: "destructive",
       });
     } finally {
@@ -131,9 +144,33 @@ export default function ArchivePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse">
-          <div className="w-8 h-8 bg-primary rounded-full"></div>
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center">
+              <div className="flex items-center">
+                <div className="relative">
+                  <BookOpen className="w-8 h-8 text-primary" />
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                    <Archive className="w-2 h-2 text-primary-foreground" />
+                  </div>
+                </div>
+                <h1 className="text-2xl font-bold ml-4">Loading Archive...</h1>
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="border rounded-lg p-4">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-4 bg-primary/20 rounded w-3/4"></div>
+                  <div className="h-3 bg-primary/10 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

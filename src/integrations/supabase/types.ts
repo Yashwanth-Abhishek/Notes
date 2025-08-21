@@ -22,6 +22,9 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          is_archived: boolean
+          is_deleted: boolean
+          deleted_at: string | null
         }
         Insert: {
           created_at?: string
@@ -30,6 +33,9 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          is_archived?: boolean
+          is_deleted?: boolean
+          deleted_at?: string | null
         }
         Update: {
           created_at?: string
@@ -38,6 +44,9 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          is_archived?: boolean
+          is_deleted?: boolean
+          deleted_at?: string | null
         }
         Relationships: []
       }

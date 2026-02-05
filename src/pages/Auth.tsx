@@ -16,6 +16,10 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  const handleGoogleSignIn = async () => {
+    await signInWithGoogle();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,12 +48,7 @@ export default function Auth() {
         {/* Hero Section */}
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-6">
-            <div className="relative">
-              <BookOpen className="w-16 h-16 text-primary" />
-              <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                <FileText className="w-3 h-3 text-primary-foreground" />
-              </div>
-            </div>
+            <img src="/logo.png" alt="Notes Logo" className="w-16 h-16 object-contain" />
           </div>
           <GlitchText
             speed={1}
@@ -94,9 +93,10 @@ export default function Auth() {
           </CardHeader>
           <CardContent>
             <Button 
-              onClick={signInWithGoogle}
+              onClick={handleGoogleSignIn}
               className="w-full"
               size="lg"
+              disabled={loading}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path
